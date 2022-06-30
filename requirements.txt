@@ -1,14 +1,17 @@
 
 # -- --------------------------------------------------------------------------------------------------- -- #
-# -- project: A SHORT DESCRIPTION OF THE PROJECT                                                         -- #
+# -- project: APT and Roll Model Python implementation and validation using OrderBook data               -- #
 # -- script: requirements.txt : text file with the required libraries for the project                    -- #
-# -- author: YOUR GITHUB USER NAME                                                                       -- #
+# -- author: AndresLaresBarragan                                                                         -- #
 # -- license: GPL-3.0 License                                                                            -- #
-# -- repository: YOUR REPOSITORY URL                                                                     -- #
+# -- repository: https://github.com/AndresLaresBarragan/MyST_Lab2                                        -- #
 # -- --------------------------------------------------------------------------------------------------- -- #
 
 pandas>=1.1.0
 numpy>=1.19.1
 jupyter>=1.0.0
-chart_studio>=1.1
 plotly>=4.14
+scipy
+sys
+os
+json
