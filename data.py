@@ -12,7 +12,7 @@
 import pandas as pd
 import os, sys, json
 
-def read_jsonOB(file_name:str, file_dir:str = None, exchange:str = 'bitfinex'):
+def read_jsonOB(file_name:str, file_dir:str = None):
     """
     Reads selected json type file in specified directory. 
     Transforms data to dictionary type, drops 'None' keys, and creates pandas DataFrames 
@@ -36,9 +36,13 @@ def read_jsonOB(file_name:str, file_dir:str = None, exchange:str = 'bitfinex'):
     Returns
     -------
     
-    ob_data:dict
+    ob_origin:dict
         Dictionary with sequential timestamps as keys and pandas DataFrames containing 
-        orderbook data as the dictionary values.
+        orderbook data from the origin exchange as the dictionary values.
+        
+    ob_dest:dict
+        Dictionary with sequential timestamps as keys and pandas DataFrames containing 
+        orderbook data from the destination exchange as the dictionary values.
     
     """
     
@@ -51,18 +55,33 @@ def read_jsonOB(file_name:str, file_dir:str = None, exchange:str = 'bitfinex'):
     # read JSON object
     f = open(file_dir+"\\"+file_name)
 
+    # Origin exchange
+        
     # return JSON object as dictionary
     orderbooks_data = json.load(f)
-    ob_data = orderbooks_data[exchange]  # select specific exchange
+    ob_origin = orderbooks_data['kraken']  # select specific exchange
     
     # drop None keys
-    ob_data = {i_key: i_value for i_key, i_value in ob_data.items() if i_value is not None}
+    ob_origin = {i_key: i_value for i_key, i_value in ob_origin.items() if i_value is not None}
     
     # create Dataframe and rearange columns
-    ob_data = {i_ob: pd.DataFrame(ob_data[i_ob])[['bid_size','bid','ask','ask_size']]
-               if ob_data[i_ob] is not None else None for i_ob in list(ob_data.keys())}
+    ob_origin = {i_ob: pd.DataFrame(ob_origin[i_ob])[['bid_size','bid','ask','ask_size']]
+               if ob_origin[i_ob] is not None else None for i_ob in list(ob_origin.keys())}
     
-    return ob_data
+    # Destination exchange
+    # return JSON object as dictionary
+    ob_dest = orderbooks_data['bitfinex']  # select specific exchange
+    
+    # drop None keys
+    ob_dest = {i_key: i_value for i_key, i_value in ob_dest.items() if i_value is not None}
+    
+    # create Dataframe and rearange columns
+    ob_dest = {i_ob: pd.DataFrame(ob_dest[i_ob])[['bid_size','bid','ask','ask_size']]
+               if ob_dest[i_ob] is not None else None for i_ob in list(ob_dest.keys())}
+
+    
+    
+    return ob_origin, ob_dest
 
 def describe(file_name:str, data:dict):
     """
