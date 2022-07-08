@@ -80,4 +80,132 @@ class OrderBooksPreparation:
         levels_added.sort_values(by='transaction_time', inplace=True, ignore_index=True)
         return levels_added
 
-    
+class XEMM(OrderBooksPreparation):
+
+    def cross_exchange_market_making(self) -> pd.DataFrame:
+        
+        for i in range(levels_added.shape[0]): # loop to add levels unto destination
+
+            to_fill = levels_added.iloc[0,:]
+            
+            if to_fill['type']=='bid':
+                # identify order's fee structure
+                fee_type = 'taker' if to_fill['price'] >= bit_ask.iloc[0]['ask'] else 'maker'
+
+
+                if fee_type=='taker':
+
+                    bit_ask['accum_size'] = bit_ask['ask_size'].cumsum()
+
+
+                    vol_to_fill=to_fill['size']
+
+                    bit_ask['remaining_vol'] = vol_to_fill - bit_ask['accum_size']
+                    to_drop = bit_ask[bit_ask['remaining_vol']>0]
+
+                    bit_ask.drop(to_drop.index, inplace=True)
+                    bit_ask.reset_index(drop=True, inplace=True)
+
+                    new_vol = -bit_ask.iloc[0,-1]  # remaing volume on surviving level
+
+                    bit_ask.iloc[0,1] = new_vol
+                    bit_ask.drop(['accum_size', 'remaining_vol'], axis=1, inplace=True) 
+                    bit_ask.reset_index(drop=True, inplace=True)
+                    
+                    levels_added.drop(0, inplace=True)
+                    levels_added.reset_index(drop=True, inplace=True)
+                    
+                    # Hedge transaction in orgin exchange (Kraken)
+                    
+                    krak_bid['accum_size'] = krak_bid['bid_size'].cumsum()
+                    krak_bid['remaining_vol'] = vol_to_fill - krak_bid['accum_size']
+                    to_drop = krak_bid[krak_bid['remaining_vol']>0]
+                    
+                    krak_bid.drop(to_drop.index, inplace=True)
+                    krak_bid.reset_index(drop=True, inplace=True)
+                    
+                    new_vol = -krak_bid.iloc[0,-1] # remaing volume on surviving level
+                    
+                    krak_bid.iloc[0,0] = new_vol
+                    krak_bid.drop(['accum_size','remaining_vol'], axis=1, inplace=True)
+                    krak_bid.reset_index(drop=True, inplace=True)
+                    
+                else:
+                    
+                    bit_bid.rename(columns={'bid_size':'size','bid':'price'}, inplace=True)
+                    
+                    to_fill = pd.DataFrame(to_fill).transpose()
+                    to_fill['bid_added_vol'] = to_fill['size'].values
+                    
+                    bit_bid = bit_bid.merge(to_fill[['size','price','bid_added_vol']], 
+                                            on=['size','price','bid_added_vol'], how='outer'
+                                        ).sort_values(by='price', ascending=False, ignore_index=True) 
+                
+                    bit_bid.rename(columns={'size':'bid_size','price':'bid'}, inplace=True)
+                    bit_bid = bit_bid.groupby('bid', as_index=False, sort=False).sum()
+                    bit_bid = bit_bid.reindex(columns=['bid_added_vol', 'bid_size', 'bid'])
+
+
+                    levels_added.drop(0, inplace=True)
+                    levels_added.reset_index(drop=True, inplace=True)
+                    
+            else:
+                
+                # identify order's fee structure
+                fee_type = 'taker' if to_fill['price'] < bit_bid.iloc[0]['bid'] else 'maker'            
+                
+                if fee_type == 'taker':
+                    
+                    bit_bid['accum_size'] = bit_bid['bid_size'].cumsum()
+
+
+                    vol_to_fill = to_fill['size']
+
+                    bit_bid['remaining_vol'] = vol_to_fill - bit_bid['accum_size']
+                    to_drop = bit_bid[bit_bid['remaining_vol']>0]
+
+                    bit_bid.drop(to_drop.index, inplace=True)
+                    bit_bid.reset_index(drop=True, inplace=True)
+
+                    new_vol = -bit_bid.iloc[0,-1] # remaing volume on surviving level
+
+                    bit_bid.iloc[0,0] = new_vol
+                    bit_bid.drop(['accum_size','remaining_vol'], axis=1, inplace=True)
+                    bit_bid.reset_index(drop=True, inplace=True)
+                    
+                    levels_added.drop(0, inplace=True)
+                    levels_added.reset_index(drop=True, inplace=True)
+                    
+                    # Hedge transaction in origin market (Kraken)
+                    krak_ask['accum_size'] = krak_ask['bid_size'].cumsum()
+                    krak_ask['remaining_vol'] = vol_to_fill - krak_ask['accum_size']
+                    to_drop = krak_ask[krak_ask['remaining_vol']>0]
+                    
+                    krak_ask.drop(to_drop.index, inplace=True)
+                    krak_ask.reset_index(drop=True, inplace=True)
+                    
+                    new_vol = -krak_ask.iloc[0,-1] # remaing volume on surviving level
+                    
+                    krak_ask.iloc[0,1] = new_vol
+                    krak_ask.drop(['accum_size','remaining_vol'], axis=1, inplace=True)
+                    krak_ask.reset_index(drop=True, inplace=True)
+                    
+                    
+                else:
+                    bit_ask.rename(columns={'ask_size':'size','ask':'price'}, inplace=True)
+                    
+                    to_fill = pd.DataFrame(to_fill).transpose()
+                    to_fill['ask_added_vol'] = to_fill['size'].values
+                    
+                    bit_ask = bit_ask.merge(to_fill[['size','price','ask_added_vol']], 
+                                            on=['size','price','ask_added_vol'], how='outer'
+                                        ).sort_values(by='price', ascending=True, ignore_index=True)               
+                    bit_ask.rename(columns={'size':'ask_size','price':'ask'}, inplace=True)
+                    bit_ask = bit_ask.groupby('ask', as_index=False, sort=False).sum()
+                    bit_ask = bit_ask.reindex(columns=['ask', 'ask_size', 'ask_added_vol'])
+
+
+                    levels_added.drop(0, inplace=True)
+                    levels_added.reset_index(drop=True, inplace=True)
+                    
+            
