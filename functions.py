@@ -15,14 +15,15 @@ import numpy as np
 
 class OrderBooksPreparation:
 
-    def __init__(self, ob_krak: dict, ob_bit: dict, bases_points: int) -> None:
+    def __init__(self, ob_krak: dict, ob_bit: dict, bp: int):
         self.ob_krak = ob_krak
         self.ob_bit = ob_bit
-        self.bases_points = bases_points
+        self.bp = bp
+        
 
     @property
-    def bases_points(self) -> float:
-        bp = self.bases_points/10000
+    def bases_points(self) -> int:
+        bp = (self.bp)/10000
         return bp
 
     @property
@@ -48,19 +49,12 @@ class OrderBooksPreparation:
                   'lower_krak': self.origin_mid_price*(1-self.bases_points)}
         return bounds
     
-    def levels_added(self) -> pd.DataFrame:
-        df_krak = self.ob_krak[list(self.ob_krak.keys())[0]]
-        df_bit = self.ob_bit[list(self.ob_bit.keys())[0]]
+    def levels_added(self, df_krak: pd.DataFrame) -> pd.DataFrame:
         
         bids_krak = df_krak[df_krak['bid']>self.origin_bounds()['lower_krak']][['bid','bid_size']]
         asks_krak = df_krak[df_krak['ask']<self.origin_bounds()['upper_krak']][['ask','ask_size']]
-        # destination exchange
-        bit_ask = df_bit[['ask','ask_size']]
-        bit_bid = df_bit[['bid_size','bid']]
 
-        # origin exchnage
-        krak_bid = df_krak[['bid_size','bid']]
-        krak_ask = df_krak[['ask','ask_size']]
+        levels = pd.concat([bids_krak, asks_krak], axis=1)
 
         bid_levels = levels[['bid_size','bid']]
         bid_levels['bid_flag'] = ['bid']*bid_levels.shape[0]
@@ -75,15 +69,18 @@ class OrderBooksPreparation:
                                 'ask_flag':'type'}, inplace=True)
 
         levels_added = bid_levels.append(ask_levels, ignore_index=True).dropna()
-
+        np.random.seed(123)
         levels_added['transaction_time'] = np.random.uniform(1250, size=levels_added.shape[0])
         levels_added.sort_values(by='transaction_time', inplace=True, ignore_index=True)
         return levels_added
 
 class XEMM(OrderBooksPreparation):
 
-    def cross_exchange_market_making(self) -> pd.DataFrame:
-        
+    def __init__(self, ob_krak: dict, ob_bit: dict, bp: int):
+        super().__init__(ob_krak, ob_bit, bp)
+
+    def cross_exchange_market_making(self, df_krak, bit_ask, bit_bid, krak_bid, krak_ask) -> pd.DataFrame:
+        levels_added = self.levels_added(df_krak)
         for i in range(levels_added.shape[0]): # loop to add levels unto destination
 
             to_fill = levels_added.iloc[0,:]
@@ -208,4 +205,4 @@ class XEMM(OrderBooksPreparation):
                     levels_added.drop(0, inplace=True)
                     levels_added.reset_index(drop=True, inplace=True)
                     
-            
+        return levels_added
