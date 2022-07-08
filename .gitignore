@@ -12,7 +12,7 @@ python_project.code-workspace
 .vscode/
 
 # -- Exclude virtual environment
-python_project_venv/
+env/
 
 # -- Exclude files folder (sometimes is useful not to exclude it)
 files/
