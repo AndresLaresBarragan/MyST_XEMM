@@ -48,6 +48,7 @@ class OrderBooksPreparation:
         bounds = {'upper_krak': self.origin_mid_price*(1+self.bases_points),
                   'lower_krak': self.origin_mid_price*(1-self.bases_points)}
         return bounds
+
     
     def levels_added(self, df_krak: pd.DataFrame) -> pd.DataFrame:
         

@@ -17,7 +17,7 @@ from visualizations import XemmVisualization
 import warnings
 warnings.filterwarnings('ignore');
 
-#ob_krak, ob_bit = dt.read_jsonOB(file_name = 'orderbooks_05jul21.json')
+ob_krak, ob_bit = dt.read_jsonOB(file_name = 'orderbooks_05jul21.json')
 #obt = XEMM(ob_krak=ob_krak, ob_bit=ob_bit, bp=10)
 
 #df_krak = ob_krak[list(ob_krak.keys())[0]]
@@ -34,5 +34,4 @@ warnings.filterwarnings('ignore');
 #krak_ask = df_krak[['ask','ask_size']]
 
 plots = XemmVisualization()
-plots.orderbook_history()
-
+plots.orderbook_history(ob_krak)
