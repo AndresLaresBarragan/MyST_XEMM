@@ -1,11 +1,12 @@
-
+"""
 # -- --------------------------------------------------------------------------------------------------- -- #
-# -- project: APT and Roll Model Python implementation and validation using OrderBook data               -- #
-# -- script: requirements.txt : text file with the required libraries for the project                    -- #
-# -- author: AndresLaresBarragan                                                                         -- #
-# -- license: GPL-3.0 License                                                                            -- #
-# -- repository: https://github.com/AndresLaresBarragan/MyST_Lab2                                        -- #
+# -- project: Python implementation of cross exchange market-making (XEMM)                               -- #
+# -- script: functions.py: python script with general functions                                          -- #
+# -- author: MoyMFO, AndresLaresBarragan, Miriam1999                                                     -- #
+# -- license: GPL-3.0 license                                                                            -- #
+# -- repository: https://github.com/AndresLaresBarragan/MyST_XEMM                                        -- #                                                                     -- #
 # -- --------------------------------------------------------------------------------------------------- -- #
+"""
 
 pandas>=1.1.0
 numpy>=1.19.1

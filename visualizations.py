@@ -1,22 +1,20 @@
+"""
+# -- --------------------------------------------------------------------------------------------------- -- #
+# -- project: Python implementation of cross exchange market-making (XEMM)                               -- #
+# -- script: functions.py: python script with general functions                                          -- #
+# -- author: MoyMFO, AndresLaresBarragan, Miriam1999                                                     -- #
+# -- license: GPL-3.0 license                                                                            -- #
+# -- repository: https://github.com/AndresLaresBarragan/MyST_XEMM                                        -- #                                                                     -- #
+# -- --------------------------------------------------------------------------------------------------- -- #
+"""
 
-"""
-# -- --------------------------------------------------------------------------------------------------- -- #
-# -- project: A SHORT DESCRIPTION OF THE PROJECT                                                         -- #
-# -- script: visualizations.py : python script with data visualization functions                         -- #
-# -- author: YOUR GITHUB USER NAME                                                                       -- #
-# -- license: THE LICENSE TYPE AS STATED IN THE REPOSITORY                                               -- #
-# -- repository: YOUR REPOSITORY URL                                                                     -- #
-# -- --------------------------------------------------------------------------------------------------- -- #
-"""
 import plotly.graph_objects as go
 import pandas as pd
-import numpy as np
-
 
 class XemmVisualization:
 
     @staticmethod
-    def orderbook_history(data: dict):
+    def orderbook_history(data: dict) -> go.Figure:
 
         def __ob_melt(data: pd.DataFrame ):
             bid = data[['bid_size','bid']]
@@ -69,4 +67,102 @@ class XemmVisualization:
         )
         fig.data[0].visible = True
         return fig.show()
+    
+    @staticmethod
+    def plot_mid(xemm: dict, origin: dict, destination: dict) -> go.Figure:
+        """
+        Plots the mid-price of the XEMM orderbook against the origin and destination ones.
+
+        Parameters:
+        -----------
+            xemm: Product orderbook of the XEMM implementation (dict).
+            origin: Origin orderbook (dict).
+            destination: Destination orderbook (dict).
+
+        Returns:
+        --------
+            Scatter plot.
+        """
+        def __mid_price(data: dict) -> list:
+            ob_ts = list(data.keys())
+            mid = [(data[ob_ts[i]]['ask'][0] + data[ob_ts[i]]['bid'][0]) * 0.5 for i in range(0, len(ob_ts))]
+            return mid
+
+        origin = __mid_price(origin)
+        xemm = __mid_price(xemm)
+        destination = __mid_price(destination)[0:len(origin)]
+
+        fig = go.Figure(data = [
+              go.Scatter(name = 'Origin orderbook', y = origin, marker_color = 'blue'), 
+              go.Scatter(name = 'XEMM orderbook', y = xemm, marker_color = 'green'), 
+              go.Scatter(name = 'Destination orderbook', y = destination, marker_color = 'grey')])
+        fig.update_layout(autosize = False, width = 900, height = 500, title_text = f'Mid-price comparison')
+        fig.update_xaxes(title_text = 'Number of orderbook')
+        fig.update_yaxes(title_text = 'Mid-price')
+        return fig.show()
         
+    @staticmethod
+    def cash_balances(fiat_bal_origin: float, fiat_bal_dest: float) -> go.Figure:
+        """
+        Plots the cash balances.
+
+        Parameters:
+        -----------
+            fiat_bal_origin: Origin orderbook cash balance (float).
+            fiat_bal_dest: Destination orderbook cash balance (float).
+
+        Returns:
+        --------
+            Bar plot.
+        """
+
+        fig = go.Figure(data = [
+              go.Bar(name = 'Origin balance', y = [fiat_bal_origin], marker_color = 'pink'), 
+              go.Bar(name = 'Destination balance', y = [fiat_bal_dest], marker_color = 'purple')])
+        fig.update_layout(autosize = False, width = 900, height = 500, title_text = f'XEMM cash balance comparison')
+        fig.update_yaxes(title_text = '$')
+        return fig.show()
+    
+    @staticmethod
+    def tokens_balances(token_bal_origin: float, token_bal_dest: float) -> go.Figure:
+        """
+        Plots the token balances.
+
+        Parameters:
+        -----------
+            token_bal_origin: Origin orderbook token balance (float).
+            token_bal_dest: Destination orderbook token balance (float).
+
+        Returns:
+        --------
+            Bar plot.
+        """
+
+        fig = go.Figure(data = [
+              go.Bar(name = 'Origin balance', y = [token_bal_origin], marker_color = 'navy'), 
+              go.Bar(name = 'Destination balance', y = [token_bal_dest], marker_color = 'cyan')])
+        fig.update_layout(autosize = False, width = 900, height = 500, title_text = f'XEMM token balance comparison')
+        fig.update_yaxes(title_text = 'Tokens')
+        return fig.show()
+
+    @staticmethod
+    def fees_comparison(fees_origin: list, fees_dest: list) -> go.Figure:
+        """
+        Plots the accumulated fees of the origin and destination orderbooks.
+
+        Parameters:
+        -----------
+            fees_origin: Origin orderbook accumulated fees (list).
+            fees_dest: Destination orderbook accumulated fees (list).
+
+        Returns:
+        --------
+            Bar plot.
+        """
+
+        fig = go.Figure(data = [
+              go.Bar(name = 'Origin accumulated fees', y = [-sum(fees_origin)], marker_color = 'brown'), 
+              go.Bar(name = 'Destination accumulated fees', y = [-sum(fees_dest)], marker_color = 'orange')])
+        fig.update_layout(autosize = False, width = 900, height = 500, title_text = f'Accumulated fees comparison')
+        fig.update_yaxes(title_text = '$')
+        return fig.show()

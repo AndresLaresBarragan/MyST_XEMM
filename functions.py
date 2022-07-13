@@ -1,21 +1,42 @@
+"""
+# -- --------------------------------------------------------------------------------------------------- -- #
+# -- project: Python implementation of cross exchange market-making (XEMM)                               -- #
+# -- script: functions.py: python script with general functions                                          -- #
+# -- author: MoyMFO, AndresLaresBarragan, Miriam1999                                                     -- #
+# -- license: GPL-3.0 license                                                                            -- #
+# -- repository: https://github.com/AndresLaresBarragan/MyST_XEMM                                        -- #                                                                     -- #
+# -- --------------------------------------------------------------------------------------------------- -- #
+"""
 
-"""
-# -- --------------------------------------------------------------------------------------------------- -- #
-# -- project: A SHORT DESCRIPTION OF THE PROJECT                                                         -- #
-# -- script: functions.py : python script with general functions                                         -- #
-# -- author: YOUR GITHUB USER NAME                                                                       -- #
-# -- license: THE LICENSE TYPE AS STATED IN THE REPOSITORY                                               -- #
-# -- repository: YOUR REPOSITORY URL                                                                     -- #
-# -- --------------------------------------------------------------------------------------------------- -- #
-"""
-import json
-from unittest import result
 import pandas as pd
 import numpy as np
 
-
 class XEMM:
+    """
+    This class allows to create objects of processes of the XEMM according to the origin and destination 
+    orderbooks, the cash and token balance and the fees.
 
+    Parameters:
+    -----------
+        ob_krak: origin orderbook (dict)
+        ob_bid: destination orderbook (dict)
+        bp: level depth basis points (int)
+        prcnt: the proportion of levels to add (float)
+        fiat_bal_dest: destination orderbook cash initial balance (float) (default = 1,000,000)
+        token_bal_dest: destination orderbook token initial balance (float) (default = 100)
+        fiat_bal_origin: origin orderbook cash initial balance (float) (default = 1,000,000)
+        token_bal_origin: origin orderbook token initial balance (float) (default = 100)
+        fee_taker_dest: taker position fee of the destination (float) (default = 0.003)
+        fee_maker_dest: maker position fee of the destination (float) (default = 0.0015)
+        fee_taker_origin: taker position fee of the origin (float) (default = 0.002)
+        fee_maker_origin: maker position fee of the origin (float) (default = 0.001)
+
+    Methods:
+    --------
+        --origin_destination_alignment: aligns the destination timestaps after the origin ones.
+        --cross_exchange_market_making: implements all the processes of the cross exchange market-making. 
+          It updates the balances and adds levels.
+    """
     def __init__(self, ob_krak: dict, ob_bit: dict, bp: int=10, prcnt: float=1,
                  fiat_bal_dest: float=1000000, token_bal_dest: float=100,
                  fiat_bal_origin: float=1000000, token_bal_origin: float=100,
@@ -34,18 +55,41 @@ class XEMM:
         self.fee_taker_origin = fee_taker_origin
         self.fee_maker_origin = fee_maker_origin
 
+
     def origin_destination_alignment(self) -> list.pop:
+        """
+        This function aligns the timestamps of the origin and destination orderbooks.
+
+        Parameters:
+        -----------
+            Already defined in the class constructor.
+
+        Returns:
+        --------
+            Aligned destination orderbook after origin.
+        """
         aux = sum(pd.to_datetime(pd.Series((self.ob_bit.keys()))) 
                   < pd.to_datetime(pd.Series(self.ob_krak.keys()))[0])
         return [self.ob_bit.pop(key) for key in list(self.ob_bit.keys())[:aux]]
 
 
     def cross_exchange_market_making(self) -> dict:
-        
-        #Orderbook aligment
+        """
+        This function adds levels from the origin orderbook to the destination one. Additionally, it
+        consumes the levels if they are traded. Moreover, it saves the payed fees and updates the balances.
+
+        Parameters:
+        -----------
+            Already defined in the class constructor.
+
+        Returns:
+        --------
+            Dictionary containing the orderbooks with the levels added and the balances.
+        """
+        # Orderbook aligment
         self.origin_destination_alignment()
 
-        # storing variables
+        # Storing variables
         ob_xemm = {}
         bids_to_fill_hist = []
         asks_to_fill_hist = []
@@ -55,48 +99,47 @@ class XEMM:
         fiat_hist_origin = [self.fiat_bal_origin]
         token_hist_dest = [self.token_bal_dest]
         token_hist_origin = [self.token_bal_origin]
+
         fees_dest = []
         fees_origin = []
         latency_limit = 1500 # median timedelta between OB updates in destination exchange
 
         # Origin OB
         df_krak = self.ob_krak[list(self.ob_krak.keys())[0]]
-        mid_krak = (df_krak['bid'][0]+df_krak['ask'][0])/2
-
+        mid_krak = (df_krak['bid'][0] + df_krak['ask'][0]) / 2
 
         # Destination OB
         df_bit = self.ob_bit[list(self.ob_bit.keys())[0]]
-        bit_ask = df_bit[['ask','ask_size']]
-        bit_bid = df_bit[['bid_size','bid']]
+        bit_ask = df_bit[['ask', 'ask_size']]
+        bit_bid = df_bit[['bid_size', 'bid']]
         bit_ask['ask_added_vol'] = np.zeros(bit_ask.shape[0])
         bit_bid['bid_added_vol'] = np.zeros(bit_bid.shape[0])
 
-        for t in range(3): #len(ob_krak.keys())-1
+        for t in range(50): #len(ob_krak.keys())-1
+            krak_bid = df_krak[['bid_size', 'bid']]
+            krak_ask = df_krak[['ask', 'ask_size']]
             
-            krak_bid = df_krak[['bid_size','bid']]
-            krak_ask = df_krak[['ask','ask_size']]
+            upper_krak = mid_krak*(1 + self.bp / 10000)
+            lower_krak = mid_krak*(1 - self.bp / 10000)
             
-            upper_krak = mid_krak*(1 + self.bp/10000)
-            lower_krak = mid_krak*(1 - self.bp/10000)
-            
-            bids_krak = df_krak[df_krak['bid']>lower_krak][['bid','bid_size']]
-            asks_krak = df_krak[df_krak['ask']<upper_krak][['ask','ask_size']]
-            levels = pd.concat([bids_krak, asks_krak], axis=1)
+            bids_krak = df_krak[df_krak['bid'] > lower_krak][['bid', 'bid_size']]
+            asks_krak = df_krak[df_krak['ask'] < upper_krak][['ask', 'ask_size']]
+            levels = pd.concat([bids_krak, asks_krak], axis = 1)
             
             # replicate origin levels on destination
-            bid_levels = levels[['bid_size','bid']]
-            bid_levels['bid_flag'] = ['bid']*bid_levels.shape[0]
+            bid_levels = levels[['bid_size', 'bid']]
+            bid_levels['bid_flag'] = ['bid'] * bid_levels.shape[0]
             bid_levels.rename(columns={'bid_size':'size',
                                     'bid':'price',
                                     'bid_flag':'type'}, inplace=True)
             bid_levels['size'] = bid_levels['size']*self.prcnt
             
-            ask_levels = levels[['ask_size','ask']]
-            ask_levels['ask_flag'] = ['ask']*ask_levels.shape[0]
+            ask_levels = levels[['ask_size', 'ask']]
+            ask_levels['ask_flag'] = ['ask'] * ask_levels.shape[0]
             ask_levels.rename(columns={'ask_size':'size',
                                     'ask':'price',
                                     'ask_flag':'type'}, inplace=True)
-            ask_levels['size'] = ask_levels['size']*self.prcnt
+            ask_levels['size'] = ask_levels['size'] * self.prcnt
             
             levels_added = bid_levels.append(ask_levels, ignore_index=True).dropna()
             np.random.seed(123)
@@ -139,7 +182,7 @@ class XEMM:
 
                         vol_to_fill = to_fill['size']
                         bit_ask['remaining_vol'] = vol_to_fill - bit_ask['accum_size']
-                        to_drop = bit_ask[bit_ask['remaining_vol']>0]
+                        to_drop = bit_ask[bit_ask['remaining_vol'] > 0]
 
                         bit_ask.drop(to_drop.index, inplace=True)
                         bit_ask.reset_index(drop=True, inplace=True)
@@ -411,26 +454,26 @@ class XEMM:
                 next_ob_krak_bids['remaining_vol'] = vol_to_fill - next_ob_krak_bids['accum_size']
                 to_drop = next_ob_krak_bids[next_ob_krak_bids['remaining_vol']>0]
 
-                next_ob_krak_bids.drop(to_drop.index, inplace=True)
-                next_ob_krak_bids.reset_index(drop=True, inplace=True)
+                next_ob_krak_bids.drop(to_drop.index, inplace = True)
+                next_ob_krak_bids.reset_index(drop = True, inplace = True)
 
-                new_vol = -next_ob_krak_bids.iloc[0,-1] # remaining volume on surviving level
+                new_vol = -next_ob_krak_bids.iloc[0, -1] # remaining volume on surviving level
 
-                next_ob_krak_bids.iloc[0,1] = new_vol
-                next_ob_krak_bids.drop(['accum_size','remaining_vol'], axis=1, inplace=True)
-                next_ob_krak_bids.reset_index(drop=True, inplace=True)
+                next_ob_krak_bids.iloc[0, 1] = new_vol
+                next_ob_krak_bids.drop(['accum_size', 'remaining_vol'], axis = 1, inplace = True)
+                next_ob_krak_bids.reset_index(drop = True, inplace = True)
 
             # re-assign variables for next iteration           
             df_bit = df_out
-            bit_ask = df_bit[['ask','ask_size','ask_added_vol']]
-            bit_bid = df_bit[['bid_added_vol','bid_size','bid']]
+            bit_ask = df_bit[['ask', 'ask_size', 'ask_added_vol']]
+            bit_bid = df_bit[['bid_added_vol', 'bid_size', 'bid']]
 
-            df_krak = pd.concat([next_ob_krak_bids, next_ob_krak_asks], axis=1)        
-            mid_krak = (df_krak['bid'][0]+df_krak['ask'][0])/2       
+            df_krak = pd.concat([next_ob_krak_bids, next_ob_krak_asks], axis = 1)        
+            mid_krak = (df_krak['bid'][0] + df_krak['ask'][0]) / 2       
         
-        results = {'self.fiat_bal_dest': self.fiat_bal_dest, 'self.token_bal_dest':self.token_bal_dest,
-                   'self.fiat_bal_origin': self.fiat_bal_origin, 'self.token_bal_origin': self.token_bal_origin,
-                   'ob_xemm': ob_xemm}
+        results = {'fiat_bal_dest': self.fiat_bal_dest, 'token_bal_dest': self.token_bal_dest,
+                   'fiat_bal_origin': self.fiat_bal_origin, 'token_bal_origin': self.token_bal_origin,
+                   'ob_xemm': ob_xemm, 'fees_dest': fees_dest, 'fees_origin': fees_origin}
         return results
 
         
