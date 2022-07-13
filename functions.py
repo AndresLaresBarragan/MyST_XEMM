@@ -321,7 +321,8 @@ class XEMM:
             fees_origin.append((krak_ask['ask'][0]*asks_to_drop['ask_size']*self.fee_maker_origin).sum())
             self.fiat_bal_origin += -fees_origin[-1] - (krak_ask['ask'][0]*asks_to_drop['ask_size']).sum()
             self.token_bal_origin += asks_to_drop['ask_size'].sum() 
-            
+            fiat_hist_dest.append(self.fiat_bal_dest)
+            fiat_hist_origin.append(self.fiat_bal_origin)
 
             bit_bid.drop(bids_to_drop.index, inplace=True)
             bit_bid.reset_index(drop=True, inplace=True)
@@ -473,7 +474,8 @@ class XEMM:
         
         results = {'fiat_bal_dest': self.fiat_bal_dest, 'token_bal_dest': self.token_bal_dest,
                    'fiat_bal_origin': self.fiat_bal_origin, 'token_bal_origin': self.token_bal_origin,
-                   'ob_xemm': ob_xemm, 'fees_dest': fees_dest, 'fees_origin': fees_origin}
+                   'ob_xemm': ob_xemm, 'fees_dest': fees_dest, 'fees_origin': fees_origin, 
+                   'fiat_hist_dest': fiat_hist_dest, 'fiat_hist_origin': fiat_hist_origin}
         return results
 
         

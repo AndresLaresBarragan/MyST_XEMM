@@ -10,7 +10,7 @@
 
 import plotly.graph_objects as go
 import pandas as pd
-
+from plotly.subplots import make_subplots
 class XemmVisualization:
 
     @staticmethod
@@ -69,7 +69,8 @@ class XemmVisualization:
         return fig.show()
     
     @staticmethod
-    def plot_mid(xemm: dict, origin: dict, destination: dict) -> go.Figure:
+    def plot_mid(xemm: dict, origin: dict, destination: dict, 
+                 fiat_hist_dest: list, fiat_hist_origin: list) -> go.Figure:
         """
         Plots the mid-price of the XEMM orderbook against the origin and destination ones.
 
@@ -78,6 +79,8 @@ class XemmVisualization:
             xemm: Product orderbook of the XEMM implementation (dict).
             origin: Origin orderbook (dict).
             destination: Destination orderbook (dict).
+            fiat_hist_dest: Destination balance per orderbook (list).
+            fiat_hist_origin: Origin balance per orderbook (list).
 
         Returns:
         --------
@@ -91,14 +94,16 @@ class XemmVisualization:
         origin = __mid_price(origin)
         xemm = __mid_price(xemm)
         destination = __mid_price(destination)[0:len(origin)]
-
-        fig = go.Figure(data = [
-              go.Scatter(name = 'Origin orderbook', y = origin, marker_color = 'blue'), 
-              go.Scatter(name = 'XEMM orderbook', y = xemm, marker_color = 'green'), 
-              go.Scatter(name = 'Destination orderbook', y = destination, marker_color = 'grey')])
-        fig.update_layout(autosize = False, width = 900, height = 500, title_text = f'Mid-price comparison')
+        fig = make_subplots(specs=[[{'secondary_y': True}]])
+        fig.add_trace(go.Scatter(name = 'Origin orderbook', y = origin, marker_color = 'blue'), secondary_y=False)
+        fig.add_trace(go.Scatter(name = 'XEMM orderbook', y = xemm, marker_color = 'green'), secondary_y=False)
+        fig.add_trace(go.Scatter(name = 'Destination orderbook', y = destination, marker_color = 'grey'), secondary_y=False)
+        fig.add_trace(go.Scatter(name = 'Destination balance', y = fiat_hist_dest, marker_color = 'firebrick'), secondary_y=True)
+        fig.add_trace(go.Scatter(name = 'Origin balance', y = fiat_hist_origin, marker_color = 'navy'), secondary_y=True)
+        fig.update_layout(autosize = False, width = 900, height = 800, title_text = f'Mid-price comparison')
         fig.update_xaxes(title_text = 'Number of orderbook')
-        fig.update_yaxes(title_text = 'Mid-price')
+        fig.update_yaxes(title_text = 'Mid-price', secondary_y=False)
+        fig.update_yaxes(title_text = 'Cash Balance', secondary_y=True)
         return fig.show()
         
     @staticmethod
