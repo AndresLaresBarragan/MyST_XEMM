@@ -14,7 +14,23 @@ from plotly.subplots import make_subplots
 class XemmVisualization:
 
     @staticmethod
-    def orderbook_history(data: dict) -> go.Figure:
+    def orderbook_history(data: dict, title) -> go.Figure:
+        """
+        A visualization of an asset's orderbooks evolution through time.
+        
+        Parameters
+        ----------
+        data:(dict)
+            Dictionary containing orderbooks as values and timestamps as keys.
+        
+        title:(str)
+            String specifying the plot's title
+            
+        Returns
+        --------
+            A bar chart showing an orderbook's structure through time.
+        
+        """
 
         def __ob_melt(data: pd.DataFrame ):
             bid = data[['bid_size','bid']]
@@ -51,7 +67,7 @@ class XemmVisualization:
             step = dict(
                 method="update",
                 args=[{"visible": [False] * len(fig.data)},
-                    {"title": "Destination Orderbook post XEMM: " + str(i)}],  # layout attribute
+                    {"title": title + str(i)}],  # layout attribute
             )
             step["args"][0]["visible"][i] = True  # Toggle i'th trace to "visible"
             steps.append(step)
