@@ -36,8 +36,9 @@ class XemmVisualization:
         fig = go.Figure()
 
         # Add traces, one for each slider step
-        for time in range(0, len(list(data.keys())[0:100])):
+        for time in range(0, len(list(data.keys())[:100])):
             dff = __ob_melt(data[list(data.keys())[time]])
+            dff.reset_index(drop=True, inplace=True)
             fig.add_trace(go.Bar(x=dff['price'], y=dff['size'], 
             marker_color= ['red' if (dff['type'][i] == 'ask') else 
             'blue' for i in range(len(dff['type']))], width = 0.4))
@@ -50,7 +51,7 @@ class XemmVisualization:
             step = dict(
                 method="update",
                 args=[{"visible": [False] * len(fig.data)},
-                    {"title": "Slider switched to step: " + str(i)}],  # layout attribute
+                    {"title": "Destination Orderbook post XEMM: " + str(i)}],  # layout attribute
             )
             step["args"][0]["visible"][i] = True  # Toggle i'th trace to "visible"
             steps.append(step)
@@ -58,7 +59,7 @@ class XemmVisualization:
         sliders = [dict(
             active = 0,
             currentvalue={"prefix": "Frequency: "},
-            pad={"t": len(list(data.keys())[0:100])},
+            pad={"t": len(list(data.keys())[:100])},
             steps=steps
         )]
 
@@ -98,12 +99,9 @@ class XemmVisualization:
         fig.add_trace(go.Scatter(name = 'Origin orderbook', y = origin, marker_color = 'blue'), secondary_y=False)
         fig.add_trace(go.Scatter(name = 'XEMM orderbook', y = xemm, marker_color = 'green'), secondary_y=False)
         fig.add_trace(go.Scatter(name = 'Destination orderbook', y = destination, marker_color = 'grey'), secondary_y=False)
-        fig.add_trace(go.Scatter(name = 'Destination balance', y = fiat_hist_dest, marker_color = 'firebrick'), secondary_y=True)
-        fig.add_trace(go.Scatter(name = 'Origin balance', y = fiat_hist_origin, marker_color = 'navy'), secondary_y=True)
         fig.update_layout(autosize = False, width = 900, height = 800, title_text = f'Mid-price comparison')
         fig.update_xaxes(title_text = 'Number of orderbook')
         fig.update_yaxes(title_text = 'Mid-price', secondary_y=False)
-        fig.update_yaxes(title_text = 'Cash Balance', secondary_y=True)
         return fig.show()
         
     @staticmethod
@@ -170,4 +168,24 @@ class XemmVisualization:
               go.Bar(name = 'Destination accumulated fees', y = [-sum(fees_dest)], marker_color = 'orange')])
         fig.update_layout(autosize = False, width = 900, height = 500, title_text = f'Accumulated fees comparison')
         fig.update_yaxes(title_text = '$')
+        return fig.show()
+    
+    @staticmethod
+    def plot_exposure(exposure_ts):
+        """
+        Plots a time series showing the net exposure held throughout the time period.
+        
+        Parameters
+        ----------
+            exposure_ts: Array containig the net token exposure timestamp.
+            
+        Returns
+        -------
+            Scatter plot.
+        """
+        fig = go.Figure(data =
+              go.Scatter(name = 'BTC exposure', y = exposure_ts, marker_color = 'orange')) 
+        fig.update_layout(autosize = False, width = 900, height = 500, title_text = 'Net Token Exposure')
+        fig.update_yaxes(title_text = 'Token amount')
+
         return fig.show()

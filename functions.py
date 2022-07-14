@@ -30,6 +30,7 @@ class XEMM:
         fee_maker_dest: maker position fee of the destination (float) (default = 0.0015)
         fee_taker_origin: taker position fee of the origin (float) (default = 0.002)
         fee_maker_origin: maker position fee of the origin (float) (default = 0.001)
+        rebal_threshold: proportion of minimum balance value (float) (default = 0.10)
 
     Methods:
     --------
@@ -41,7 +42,8 @@ class XEMM:
                  fiat_bal_dest: float=1000000, token_bal_dest: float=100,
                  fiat_bal_origin: float=1000000, token_bal_origin: float=100,
                  fee_taker_dest: float=.003, fee_maker_dest: float=.0015,
-                 fee_taker_origin: float=.002, fee_maker_origin:float=.001):
+                 fee_taker_origin: float=.002, fee_maker_origin:float=.001, 
+                 rebal_threshold:float=.10):
         self.ob_krak = ob_krak
         self.ob_bit = ob_bit
         self.bp = bp
@@ -54,6 +56,9 @@ class XEMM:
         self.fee_maker_dest = fee_maker_dest
         self.fee_taker_origin = fee_taker_origin
         self.fee_maker_origin = fee_maker_origin
+        self.initial_fiat = fiat_bal_dest
+        self.initial_token = token_bal_dest
+        self.rebal_threshold = rebal_threshold
 
 
     def origin_destination_alignment(self) -> list.pop:
@@ -115,7 +120,7 @@ class XEMM:
         bit_ask['ask_added_vol'] = np.zeros(bit_ask.shape[0])
         bit_bid['bid_added_vol'] = np.zeros(bit_bid.shape[0])
 
-        for t in range(50): #len(ob_krak.keys())-1
+        for t in range(len(self.ob_krak.keys())-1):
             krak_bid = df_krak[['bid_size', 'bid']]
             krak_ask = df_krak[['ask', 'ask_size']]
             
@@ -159,7 +164,6 @@ class XEMM:
             size_to_fill_hist.append(levels_added['size'].sum())
             
             for i in range(levels_added.shape[0]): # loop to add levels unto destination
-                aux = levels_added
                 to_fill = levels_added.iloc[0,:]
 
                 if to_fill['type']=='bid':
@@ -321,8 +325,35 @@ class XEMM:
             fees_origin.append((krak_ask['ask'][0]*asks_to_drop['ask_size']*self.fee_maker_origin).sum())
             self.fiat_bal_origin += -fees_origin[-1] - (krak_ask['ask'][0]*asks_to_drop['ask_size']).sum()
             self.token_bal_origin += asks_to_drop['ask_size'].sum() 
+            
+            # rebalance condition
+            if self.fiat_bal_origin <= self.rebal_threshold*(self.initial_fiat): 
+                
+                rebal_fiat = self.fiat_bal_dest - self.initial_fiat
+                self.fiat_bal_dest -= rebal_fiat
+                self.fiat_bal_origin += rebal_fiat
+                
+                rebal_token = self.token_bal_origin - self.initial_token
+                self.token_bal_dest +=  rebal_token
+                self.token_bal_origin -= rebal_token
+                
+                
+            elif self.fiat_bal_dest <= self.rebal_threshold*(self.initial_fiat):
+                
+                
+                rebal_fiat = self.fiat_bal_origin - self.initial_fiat
+                self.fiat_bal_dest += rebal_fiat
+                self.fiat_bal_origin -= rebal_fiat
+                
+                rebal_token = self.token_bal_dest - self.initial_token
+                self.token_bal_dest -=  rebal_token
+                self.token_bal_origin += rebal_token
+                
+                
             fiat_hist_dest.append(self.fiat_bal_dest)
             fiat_hist_origin.append(self.fiat_bal_origin)
+            token_hist_dest.append(self.token_bal_dest)
+            token_hist_origin.append(self.token_bal_origin)
 
             bit_bid.drop(bids_to_drop.index, inplace=True)
             bit_bid.reset_index(drop=True, inplace=True)
@@ -470,12 +501,16 @@ class XEMM:
             bit_bid = df_bit[['bid_added_vol', 'bid_size', 'bid']]
 
             df_krak = pd.concat([next_ob_krak_bids, next_ob_krak_asks], axis = 1)        
-            mid_krak = (df_krak['bid'][0] + df_krak['ask'][0]) / 2       
+            mid_krak = (df_krak['bid'][0] + df_krak['ask'][0]) / 2  
+        
+        self.token_exposure = np.array(token_hist_dest) + np.array(token_hist_origin) - 2 * self.initial_token
         
         results = {'fiat_bal_dest': self.fiat_bal_dest, 'token_bal_dest': self.token_bal_dest,
                    'fiat_bal_origin': self.fiat_bal_origin, 'token_bal_origin': self.token_bal_origin,
                    'ob_xemm': ob_xemm, 'fees_dest': fees_dest, 'fees_origin': fees_origin, 
-                   'fiat_hist_dest': fiat_hist_dest, 'fiat_hist_origin': fiat_hist_origin}
+                   'fiat_hist_dest': fiat_hist_dest, 'fiat_hist_origin': fiat_hist_origin,
+                   'token_exposure':self.token_exposure}
+        
         return results
 
         
